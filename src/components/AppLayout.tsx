@@ -1,9 +1,12 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { Outlet } from "react-router-dom";
 
 export function AppLayout() {
+  useRealtimeNotifications();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
