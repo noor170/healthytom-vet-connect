@@ -8,6 +8,9 @@ import { AppLayout } from "@/components/AppLayout";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import PetList from "./pages/PetList";
+import PetForm from "./pages/PetForm";
+import PetProfile from "./pages/PetProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,7 +36,9 @@ function AppRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/pets" element={<Dashboard />} />
+        <Route path="/pets" element={<PetList />} />
+        <Route path="/pets/new" element={<PetForm />} />
+        <Route path="/pets/:id" element={<PetProfile />} />
         <Route path="/requests/new" element={<Dashboard />} />
         <Route path="/consultations" element={<Dashboard />} />
         <Route path="/profile" element={<Dashboard />} />
