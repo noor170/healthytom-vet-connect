@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Heart, Stethoscope } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 type AppRole = "farmer" | "vet";
 
@@ -28,10 +27,6 @@ export default function Auth() {
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] = useState("");
 
-  // Forgot password
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [showForgot, setShowForgot] = useState(false);
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -40,7 +35,8 @@ export default function Auth() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Check your email to confirm your account!");
+      toast.success("Account created successfully!");
+      navigate("/");
     }
   };
 
@@ -55,48 +51,6 @@ export default function Auth() {
       navigate("/");
     }
   };
-
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Password reset link sent to your email!");
-      setShowForgot(false);
-    }
-  };
-
-  if (showForgot) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Reset Password</CardTitle>
-            <CardDescription>Enter your email to receive a reset link</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="forgot-email">Email</Label>
-                <Input id="forgot-email" type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} required />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending..." : "Send Reset Link"}
-              </Button>
-              <Button type="button" variant="ghost" className="w-full" onClick={() => setShowForgot(false)}>
-                Back to login
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -133,9 +87,6 @@ export default function Auth() {
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Signing in..." : "Sign In"}
-                  </Button>
-                  <Button type="button" variant="link" className="w-full" onClick={() => setShowForgot(true)}>
-                    Forgot password?
                   </Button>
                 </form>
               </CardContent>

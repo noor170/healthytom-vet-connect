@@ -1,52 +1,57 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { petApi, consultationApi, prescriptionApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PawPrint, MessageSquare, Stethoscope, Users } from "lucide-react";
 
 export default function Dashboard() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
 
   const { data: petCount = 0 } = useQuery({
     queryKey: ["dashboard-pets"],
     queryFn: async () => {
-      const { count } = await supabase.from("pets").select("*", { count: "exact", head: true });
-      return count ?? 0;
+      if (!user) return 0;
+      const pets =
+        role === "farmer"
+          ? await petApi.getByOwner(user.id)
+          : await petApi.getAll();
+      return pets.length;
     },
+    enabled: !!user,
   });
 
   const { data: activeRequests = 0 } = useQuery({
     queryKey: ["dashboard-requests"],
     queryFn: async () => {
-      const { count } = await supabase
-        .from("treatment_requests")
-        .select("*", { count: "exact", head: true })
-        .in("status", ["submitted", "assigned", "in_progress"]);
-      return count ?? 0;
+      if (!user) return 0;
+      let consultations;
+      if (role === "farmer") {
+        consultations = await consultationApi.getByOwner(user.id);
+      } else if (role === "vet") {
+        consultations = await consultationApi.getByVet(user.id);
+      } else {
+        consultations = await consultationApi.getAll();
+      }
+      return consultations.filter((c) =>
+        ["PENDING", "SCHEDULED", "IN_PROGRESS", "submitted", "assigned", "in_progress"].includes(c.status),
+      ).length;
     },
+    enabled: !!user,
   });
 
   const { data: prescriptionCount = 0 } = useQuery({
     queryKey: ["dashboard-prescriptions"],
     queryFn: async () => {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-      const { count } = await supabase
-        .from("prescriptions")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", startOfMonth.toISOString());
-      return count ?? 0;
+      if (!user) return 0;
+      let prescriptions;
+      if (role === "vet") {
+        prescriptions = await prescriptionApi.getByVet(user.id);
+      } else {
+        prescriptions = await prescriptionApi.getAll().catch(() => []);
+      }
+      return prescriptions.length;
     },
-  });
-
-  const { data: userCount = 0 } = useQuery({
-    queryKey: ["dashboard-users"],
-    enabled: role === "admin",
-    queryFn: async () => {
-      const { count } = await supabase.from("user_roles").select("*", { count: "exact", head: true });
-      return count ?? 0;
-    },
+    enabled: !!user,
   });
 
   return (
@@ -88,7 +93,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{prescriptionCount}</div>
-            <p className="text-xs text-muted-foreground">Issued this month</p>
+            <p className="text-xs text-muted-foreground">Total issued</p>
           </CardContent>
         </Card>
         {role === "admin" && (
@@ -98,7 +103,7 @@ export default function Dashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{userCount}</div>
+              <div className="text-2xl font-bold">—</div>
               <p className="text-xs text-muted-foreground">Registered users</p>
             </CardContent>
           </Card>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { consultationApi, petApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,55 +11,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 
-const URGENCY_OPTIONS = [
-  { value: "low", label: "Low — Routine checkup", color: "text-muted-foreground" },
-  { value: "medium", label: "Medium — Needs attention soon", color: "text-warning" },
-  { value: "high", label: "High — Urgent care needed", color: "text-destructive" },
-  { value: "emergency", label: "Emergency — Immediate help!", color: "text-destructive" },
-] as const;
-
 export default function NewRequest() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [petId, setPetId] = useState("");
-  const [urgency, setUrgency] = useState<string>("medium");
   const [symptoms, setSymptoms] = useState("");
   const [notes, setNotes] = useState("");
 
   const { data: pets } = useQuery({
     queryKey: ["pets"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("pets").select("id, name, species").order("name");
-      if (error) throw error;
-      return data;
+      if (!user) return [];
+      return petApi.getByOwner(user.id);
     },
+    enabled: !!user,
   });
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not authenticated");
-      const { data, error } = await supabase.from("treatment_requests").insert({
-        pet_id: petId,
-        farmer_id: user.id,
-        urgency: urgency as any,
-        symptoms,
-        notes: notes || null,
-      }).select("id").single();
-      if (error) throw error;
-
-      // Trigger push notifications to vets (fire and forget)
-      const selectedPet = pets?.find((p) => p.id === petId);
-      const petLabel = selectedPet ? `${selectedPet.name} (${selectedPet.species})` : "a pet";
-      supabase.functions.invoke("push-notify", {
-        body: {
-          action: "notify-vets",
-          title: `🐾 New ${urgency} request`,
-          message: `Treatment needed for ${petLabel}: ${symptoms.slice(0, 100)}`,
-          url: `/consultations/${data.id}`,
+      await consultationApi.create(
+        {
+          petId: Number(petId),
+          symptoms,
+          notes: notes || null,
+          status: "PENDING",
         },
-      }).catch(console.error);
+        user.id,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["treatment-requests"] });
@@ -97,7 +78,7 @@ export default function NewRequest() {
                 <SelectTrigger><SelectValue placeholder="Select your pet" /></SelectTrigger>
                 <SelectContent>
                   {pets?.map((pet) => (
-                    <SelectItem key={pet.id} value={pet.id}>
+                    <SelectItem key={pet.id} value={String(pet.id)}>
                       {pet.name} ({pet.species})
                     </SelectItem>
                   ))}
@@ -111,20 +92,6 @@ export default function NewRequest() {
                   </Button>
                 </p>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Urgency *</Label>
-              <Select value={urgency} onValueChange={setUrgency}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {URGENCY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-2">
