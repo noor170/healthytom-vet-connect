@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { petApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,43 +22,22 @@ export default function PetForm() {
   const [name, setName] = useState("");
   const [species, setSpecies] = useState<string>("");
   const [breed, setBreed] = useState("");
-  const [ageYears, setAgeYears] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [notes, setNotes] = useState("");
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not authenticated");
-
-      let avatarUrl: string | null = null;
-
-      if (avatarFile) {
-        const ext = avatarFile.name.split(".").pop();
-        const filePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("pet-photos")
-          .upload(filePath, avatarFile);
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from("pet-photos")
-          .getPublicUrl(filePath);
-        avatarUrl = urlData.publicUrl;
-      }
-
-      const { error } = await supabase.from("pets").insert({
-        owner_id: user.id,
-        name,
-        species,
-        breed: breed || null,
-        age_years: ageYears ? Number(ageYears) : null,
-        weight_kg: weightKg ? Number(weightKg) : null,
-        notes: notes || null,
-        avatar_url: avatarUrl,
-      });
-
-      if (error) throw error;
+      await petApi.create(
+        {
+          name,
+          species,
+          breed: breed || null,
+          weight: weightKg ? Number(weightKg) : null,
+          medicalHistory: notes || null,
+        },
+        user.id,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pets"] });
@@ -111,16 +90,8 @@ export default function PetForm() {
                 <Input id="breed" value={breed} onChange={(e) => setBreed(e.target.value)} placeholder="e.g. Holstein" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="age">Age (years)</Label>
-                <Input id="age" type="number" min="0" step="0.5" value={ageYears} onChange={(e) => setAgeYears(e.target.value)} />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="weight">Weight (kg)</Label>
                 <Input id="weight" type="number" min="0" step="0.1" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="avatar">Photo</Label>
-                <Input id="avatar" type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)} />
               </div>
             </div>
             <div className="space-y-2">

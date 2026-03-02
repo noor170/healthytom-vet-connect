@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { consultationApi, prescriptionApi, petApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,24 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Pill, Stethoscope, PawPrint, Calendar } from "lucide-react";
+import { ArrowLeft, Pill, Stethoscope, PawPrint } from "lucide-react";
 import { format } from "date-fns";
 
 const statusColors: Record<string, string> = {
+  PENDING: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  SCHEDULED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   assigned: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  IN_PROGRESS: "bg-primary/15 text-primary",
   in_progress: "bg-primary/15 text-primary",
+  COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  CANCELLED: "bg-muted text-muted-foreground",
   cancelled: "bg-muted text-muted-foreground",
-};
-
-const urgencyColors: Record<string, string> = {
-  low: "bg-muted text-muted-foreground",
-  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  emergency: "bg-destructive/15 text-destructive",
 };
 
 export default function ConsultationDetail() {
@@ -34,56 +31,39 @@ export default function ConsultationDetail() {
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
+  const consultationId = Number(id);
 
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
-  const [medication, setMedication] = useState("");
+  const [medicationName, setMedicationName] = useState("");
   const [dosage, setDosage] = useState("");
   const [instructions, setInstructions] = useState("");
   const [duration, setDuration] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
 
   const { data: request, isLoading } = useQuery({
-    queryKey: ["treatment-request", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("treatment_requests")
-        .select("*, pets(id, name, species, breed, avatar_url)")
-        .eq("id", id!)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id,
+    queryKey: ["treatment-request", consultationId],
+    queryFn: () => consultationApi.getById(consultationId),
+    enabled: !!consultationId,
+  });
+
+  const { data: pet } = useQuery({
+    queryKey: ["pet", request?.petId],
+    queryFn: () => petApi.getById(request!.petId),
+    enabled: !!request?.petId,
   });
 
   const { data: prescriptions } = useQuery({
-    queryKey: ["prescriptions", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("prescriptions")
-        .select("*")
-        .eq("request_id", id!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id,
+    queryKey: ["prescriptions", consultationId],
+    queryFn: () => prescriptionApi.getByConsultation(consultationId),
+    enabled: !!consultationId,
   });
 
   const statusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
-      const updates: any = { status: newStatus };
-      if (newStatus === "assigned" || newStatus === "in_progress") {
-        updates.vet_id = user?.id;
-      }
-      const { error } = await supabase
-        .from("treatment_requests")
-        .update(updates)
-        .eq("id", id!);
-      if (error) throw error;
+      await consultationApi.update(consultationId, { status: newStatus });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["treatment-request", id] });
+      queryClient.invalidateQueries({ queryKey: ["treatment-request", consultationId] });
       queryClient.invalidateQueries({ queryKey: ["treatment-requests"] });
       toast.success("Status updated");
     },
@@ -93,24 +73,26 @@ export default function ConsultationDetail() {
   const prescriptionMutation = useMutation({
     mutationFn: async () => {
       if (!user || !request) throw new Error("Missing data");
-      const { error } = await supabase.from("prescriptions").insert({
-        request_id: id!,
-        pet_id: request.pet_id,
-        vet_id: user.id,
-        farmer_id: request.farmer_id,
-        medication,
+      await prescriptionApi.create({
+        consultationId,
+        petId: request.petId,
+        veterinarianId: user.id,
+        medicationName,
         dosage,
         instructions: instructions || null,
-        duration: duration || null,
-        diagnosis: diagnosis || null,
+        duration: duration ? Number(duration) : null,
+        notes: diagnosis || null,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["prescriptions", id] });
+      queryClient.invalidateQueries({ queryKey: ["prescriptions", consultationId] });
       toast.success("Prescription issued!");
       setShowPrescriptionForm(false);
-      setMedication(""); setDosage(""); setInstructions(""); setDuration(""); setDiagnosis("");
+      setMedicationName("");
+      setDosage("");
+      setInstructions("");
+      setDuration("");
+      setDiagnosis("");
     },
     onError: (err: any) => toast.error(err.message || "Failed to issue prescription"),
   });
@@ -132,8 +114,8 @@ export default function ConsultationDetail() {
     );
   }
 
-  const pet = (request as any).pets;
   const isVet = role === "vet";
+  const isActive = !["COMPLETED", "CANCELLED", "completed", "cancelled"].includes(request.status);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -146,8 +128,8 @@ export default function ConsultationDetail() {
         <CardHeader>
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              {pet?.avatar_url ? (
-                <img src={pet.avatar_url} alt={pet.name} className="h-14 w-14 rounded-xl object-cover border-2 border-primary/20" />
+              {pet?.photoUrl ? (
+                <img src={pet.photoUrl} alt={pet.name} className="h-14 w-14 rounded-xl object-cover border-2 border-primary/20" />
               ) : (
                 <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center">
                   <PawPrint className="h-6 w-6 text-primary" />
@@ -159,12 +141,13 @@ export default function ConsultationDetail() {
                   <Badge className={statusColors[request.status]}>{request.status.replace("_", " ")}</Badge>
                 </CardTitle>
                 <CardDescription className="flex items-center gap-2 mt-1">
-                  {pet?.name} ({pet?.species}{pet?.breed ? ` · ${pet.breed}` : ""})
-                  <span className="text-xs">· {format(new Date(request.created_at), "MMM d, yyyy")}</span>
+                  {pet?.name || "Pet"} ({pet?.species || ""}{pet?.breed ? ` · ${pet.breed}` : ""})
+                  {request.consultationDate && (
+                    <span className="text-xs">· {format(new Date(request.consultationDate), "MMM d, yyyy")}</span>
+                  )}
                 </CardDescription>
               </div>
             </div>
-            <Badge className={urgencyColors[request.urgency]}>{request.urgency} urgency</Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -180,24 +163,24 @@ export default function ConsultationDetail() {
           )}
 
           {/* Vet Actions */}
-          {isVet && request.status !== "completed" && request.status !== "cancelled" && (
+          {isVet && isActive && (
             <div className="flex gap-2 pt-2 flex-wrap">
-              {request.status === "submitted" && (
-                <Button size="sm" onClick={() => statusMutation.mutate("assigned")}>
+              {["PENDING", "submitted"].includes(request.status) && (
+                <Button size="sm" onClick={() => statusMutation.mutate("SCHEDULED")}>
                   Accept & Assign to Me
                 </Button>
               )}
-              {request.status === "assigned" && (
-                <Button size="sm" onClick={() => statusMutation.mutate("in_progress")}>
+              {["SCHEDULED", "assigned"].includes(request.status) && (
+                <Button size="sm" onClick={() => statusMutation.mutate("IN_PROGRESS")}>
                   Start Treatment
                 </Button>
               )}
-              {(request.status === "in_progress" || request.status === "assigned") && (
+              {["IN_PROGRESS", "SCHEDULED", "in_progress", "assigned"].includes(request.status) && (
                 <>
                   <Button size="sm" variant="outline" onClick={() => setShowPrescriptionForm(true)}>
                     <Pill className="h-4 w-4 mr-2" /> Issue Prescription
                   </Button>
-                  <Button size="sm" variant="secondary" onClick={() => statusMutation.mutate("completed")}>
+                  <Button size="sm" variant="secondary" onClick={() => statusMutation.mutate("COMPLETED")}>
                     Mark Completed
                   </Button>
                 </>
@@ -206,7 +189,7 @@ export default function ConsultationDetail() {
           )}
 
           {/* View Pet Link */}
-          <Button variant="link" className="p-0" onClick={() => navigate(`/pets/${request.pet_id}`)}>
+          <Button variant="link" className="p-0" onClick={() => navigate(`/pets/${request.petId}`)}>
             View Pet Profile →
           </Button>
         </CardContent>
@@ -232,15 +215,15 @@ export default function ConsultationDetail() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="medication">Medication *</Label>
-                  <Input id="medication" value={medication} onChange={(e) => setMedication(e.target.value)} required placeholder="e.g. Amoxicillin" />
+                  <Input id="medication" value={medicationName} onChange={(e) => setMedicationName(e.target.value)} required placeholder="e.g. Amoxicillin" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="dosage">Dosage *</Label>
                   <Input id="dosage" value={dosage} onChange={(e) => setDosage(e.target.value)} required placeholder="e.g. 250mg twice daily" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Duration</Label>
-                  <Input id="duration" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 7 days" />
+                  <Label htmlFor="duration">Duration (days)</Label>
+                  <Input id="duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 7" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -271,16 +254,16 @@ export default function ConsultationDetail() {
           <CardContent className="space-y-4">
             {prescriptions.map((rx) => (
               <div key={rx.id} className="border rounded-lg p-4 space-y-2">
-                {rx.diagnosis && (
+                {rx.notes && (
                   <div>
                     <span className="text-xs text-muted-foreground">Diagnosis:</span>
-                    <p className="text-sm font-medium">{rx.diagnosis}</p>
+                    <p className="text-sm font-medium">{rx.notes}</p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
                     <span className="text-xs text-muted-foreground">Medication</span>
-                    <p className="text-sm font-semibold">{rx.medication}</p>
+                    <p className="text-sm font-semibold">{rx.medicationName}</p>
                   </div>
                   <div>
                     <span className="text-xs text-muted-foreground">Dosage</span>
@@ -289,13 +272,15 @@ export default function ConsultationDetail() {
                   {rx.duration && (
                     <div>
                       <span className="text-xs text-muted-foreground">Duration</span>
-                      <p className="text-sm">{rx.duration}</p>
+                      <p className="text-sm">{rx.duration} days</p>
                     </div>
                   )}
-                  <div>
-                    <span className="text-xs text-muted-foreground">Issued</span>
-                    <p className="text-sm">{format(new Date(rx.created_at), "MMM d, yyyy")}</p>
-                  </div>
+                  {rx.prescribedDate && (
+                    <div>
+                      <span className="text-xs text-muted-foreground">Issued</span>
+                      <p className="text-sm">{format(new Date(rx.prescribedDate), "MMM d, yyyy")}</p>
+                    </div>
+                  )}
                 </div>
                 {rx.instructions && (
                   <div>

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { consultationApi, petApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,18 +9,16 @@ import { Plus, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
 const statusColors: Record<string, string> = {
+  PENDING: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  SCHEDULED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   assigned: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  IN_PROGRESS: "bg-primary/15 text-primary",
   in_progress: "bg-primary/15 text-primary",
+  COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  CANCELLED: "bg-muted text-muted-foreground",
   cancelled: "bg-muted text-muted-foreground",
-};
-
-const urgencyColors: Record<string, string> = {
-  low: "bg-muted text-muted-foreground",
-  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  emergency: "bg-destructive/15 text-destructive",
 };
 
 export default function Consultations() {
@@ -30,13 +28,37 @@ export default function Consultations() {
   const { data: requests, isLoading } = useQuery({
     queryKey: ["treatment-requests"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("treatment_requests")
-        .select("*, pets(name, species)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      if (!user) return [];
+      let consultations;
+      if (role === "farmer") {
+        consultations = await consultationApi.getByOwner(user.id);
+      } else if (role === "vet") {
+        consultations = await consultationApi.getByVet(user.id);
+      } else {
+        consultations = await consultationApi.getAll();
+      }
+
+      // Enrich with pet names
+      const petIds = [...new Set(consultations.map((c) => c.petId))] as number[];
+      const petMap = new Map<number, { name: string; species: string }>();
+      await Promise.all(
+        petIds.map(async (pid) => {
+          try {
+            const pet = await petApi.getById(pid);
+            petMap.set(pid, { name: pet.name, species: pet.species });
+          } catch {
+            /* ignore */
+          }
+        }),
+      );
+
+      return consultations.map((c) => ({
+        ...c,
+        petName: petMap.get(c.petId)?.name || "Unknown",
+        petSpecies: petMap.get(c.petId)?.species || "",
+      }));
     },
+    enabled: !!user,
   });
 
   if (isLoading) {
@@ -91,18 +113,17 @@ export default function Consultations() {
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h3 className="font-semibold truncate">{(req as any).pets?.name}</h3>
+                    <h3 className="font-semibold truncate">{req.petName}</h3>
                     <Badge variant="outline" className="text-xs">
-                      {(req as any).pets?.species}
-                    </Badge>
-                    <Badge className={urgencyColors[req.urgency] || ""}>
-                      {req.urgency}
+                      {req.petSpecies}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground truncate">{req.symptoms}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(req.created_at), "MMM d, yyyy · h:mm a")}
-                  </p>
+                  {req.consultationDate && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {format(new Date(req.consultationDate), "MMM d, yyyy · h:mm a")}
+                    </p>
+                  )}
                 </div>
                 <Badge className={statusColors[req.status] || ""}>
                   {req.status.replace("_", " ")}

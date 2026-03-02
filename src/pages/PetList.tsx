@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { petApi, type PetDto } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,25 +28,23 @@ const speciesEmoji: Record<string, string> = {
 
 export default function PetList() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: pets, isLoading } = useQuery({
     queryKey: ["pets"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pets")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      if (!user) return [];
+      return role === "farmer"
+        ? petApi.getByOwner(user.id)
+        : petApi.getAll();
     },
+    enabled: !!user,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (petId: string) => {
-      const { error } = await supabase.from("pets").delete().eq("id", petId);
-      if (error) throw error;
+    mutationFn: async (petId: number) => {
+      await petApi.delete(petId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pets"] });
@@ -100,9 +97,9 @@ export default function PetList() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    {pet.avatar_url ? (
+                    {pet.photoUrl ? (
                       <img
-                        src={pet.avatar_url}
+                        src={pet.photoUrl}
                         alt={pet.name}
                         className="h-12 w-12 rounded-full object-cover border-2 border-primary/20"
                       />
@@ -133,7 +130,7 @@ export default function PetList() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Remove {pet.name}?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will permanently delete this pet and all associated photos and records.
+                          This will permanently delete this pet and all associated records.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -149,8 +146,7 @@ export default function PetList() {
               <CardContent className="pt-0">
                 <div className="flex gap-4 text-sm text-muted-foreground">
                   {pet.breed && <span>Breed: {pet.breed}</span>}
-                  {pet.age_years && <span>Age: {pet.age_years}y</span>}
-                  {pet.weight_kg && <span>{pet.weight_kg}kg</span>}
+                  {pet.weight && <span>{pet.weight}kg</span>}
                 </div>
               </CardContent>
             </Card>
