@@ -1,15 +1,12 @@
 package com.healthytom.service;
 
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Storage;
 import com.google.firebase.cloud.StorageClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Firebase Storage Service
@@ -76,9 +73,15 @@ public class FirebaseStorageService {
      */
     public void deleteFile(String fileName) {
         try {
-            var bucket = StorageClient.getInstance().bucket(storageBucket);
-            bucket.delete(fileName);
-            logger.info("File deleted successfully: {}", fileName);
+            var storage = StorageClient.getInstance().bucket(storageBucket).getStorage();
+            var blobId = com.google.cloud.storage.BlobId.of(storageBucket, fileName);
+            boolean deleted = storage.delete(blobId);
+            
+            if (deleted) {
+                logger.info("File deleted successfully: {}", fileName);
+            } else {
+                logger.warn("File not found for deletion: {}", fileName);
+            }
         } catch (Exception e) {
             logger.error("Error deleting file: {}", fileName, e);
             throw new RuntimeException("Failed to delete file from Firebase Storage", e);

@@ -1,0 +1,67 @@
+# Add these lines to your .gitignore to prevent committing sensitive files
+
+# Firebase credentials
+firebase-credentials.json
+google-service-account.json
+firebase-key.json
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+.env.prod
+
+# Log files
+*.log
+/logs/
+nohup.out
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+target/
+dist/
+build/
+
+# Node modules (if using Node for frontend testing)
+node_modules/
+npm-debug.log
+
+# Application properties with secrets
+application-prod.properties.local
+application-prod.properties.bak
+
+# Test results
+test-results/
+coverage/
+
+# Firebase emulator data
+.emulatorrc
+.firebase/
+
+# OS files
+.DS_Store
+.project
+.classpath
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+~*
+
+# AWS/Cloud credentials
+.aws/
+.azure/
+.gcp/
+
+# Database files (if using local SQLite, H2, etc)
+*.db
+*.sqlite
+*.h2.db

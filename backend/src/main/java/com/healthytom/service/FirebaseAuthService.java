@@ -3,8 +3,6 @@ package com.healthytom.service;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
-import com.google.firebase.auth.CreateRequest;
-import com.google.firebase.auth.UpdateRequest;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -25,7 +23,7 @@ public class FirebaseAuthService {
      */
     public UserRecord createUser(String email, String password, String displayName) {
         try {
-            CreateRequest request = new CreateRequest()
+            UserRecord.CreateRequest request = new UserRecord.CreateRequest()
                     .setEmail(email)
                     .setPassword(password)
                     .setDisplayName(displayName)
@@ -73,7 +71,7 @@ public class FirebaseAuthService {
      */
     public void updateUserProfile(String uid, String displayName, String photoUrl) {
         try {
-            UpdateRequest request = new UpdateRequest(uid)
+            UserRecord.UpdateRequest request = new UserRecord.UpdateRequest(uid)
                     .setDisplayName(displayName)
                     .setPhotoUrl(photoUrl);
 
@@ -90,7 +88,7 @@ public class FirebaseAuthService {
      */
     public void updateUserEmail(String uid, String newEmail) {
         try {
-            UpdateRequest request = new UpdateRequest(uid)
+            UserRecord.UpdateRequest request = new UserRecord.UpdateRequest(uid)
                     .setEmail(newEmail);
 
             FirebaseAuth.getInstance().updateUser(request);
@@ -106,7 +104,7 @@ public class FirebaseAuthService {
      */
     public void updateUserPassword(String uid, String newPassword) {
         try {
-            UpdateRequest request = new UpdateRequest(uid)
+            UserRecord.UpdateRequest request = new UserRecord.UpdateRequest(uid)
                     .setPassword(newPassword);
 
             FirebaseAuth.getInstance().updateUser(request);
@@ -148,7 +146,7 @@ public class FirebaseAuthService {
      */
     public void disableUser(String uid) {
         try {
-            UpdateRequest request = new UpdateRequest(uid)
+            UserRecord.UpdateRequest request = new UserRecord.UpdateRequest(uid)
                     .setDisabled(true);
 
             FirebaseAuth.getInstance().updateUser(request);
@@ -164,7 +162,7 @@ public class FirebaseAuthService {
      */
     public void enableUser(String uid) {
         try {
-            UpdateRequest request = new UpdateRequest(uid)
+            UserRecord.UpdateRequest request = new UserRecord.UpdateRequest(uid)
                     .setDisabled(false);
 
             FirebaseAuth.getInstance().updateUser(request);
