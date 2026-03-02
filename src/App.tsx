@@ -11,6 +11,10 @@ import Dashboard from "./pages/Dashboard";
 import PetList from "./pages/PetList";
 import PetForm from "./pages/PetForm";
 import PetProfile from "./pages/PetProfile";
+import NewRequest from "./pages/NewRequest";
+import Consultations from "./pages/Consultations";
+import ConsultationDetail from "./pages/ConsultationDetail";
+import Prescriptions from "./pages/Prescriptions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,12 +43,13 @@ function AppRoutes() {
         <Route path="/pets" element={<PetList />} />
         <Route path="/pets/new" element={<PetForm />} />
         <Route path="/pets/:id" element={<PetProfile />} />
-        <Route path="/requests/new" element={<Dashboard />} />
-        <Route path="/consultations" element={<Dashboard />} />
+        <Route path="/requests/new" element={<NewRequest />} />
+        <Route path="/consultations" element={<Consultations />} />
+        <Route path="/consultations/:id" element={<ConsultationDetail />} />
         <Route path="/profile" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/requests" element={<Dashboard />} />
-        <Route path="/prescriptions" element={<Dashboard />} />
+        <Route path="/requests" element={<Consultations />} />
+        <Route path="/prescriptions" element={<Prescriptions />} />
         <Route path="/admin/users" element={<Dashboard />} />
         <Route path="/admin/logs" element={<Dashboard />} />
         <Route path="/admin/stats" element={<Dashboard />} />

@@ -91,6 +91,63 @@ export type Database = {
         }
         Relationships: []
       }
+      prescriptions: {
+        Row: {
+          created_at: string
+          diagnosis: string | null
+          dosage: string
+          duration: string | null
+          farmer_id: string
+          id: string
+          instructions: string | null
+          medication: string
+          pet_id: string
+          request_id: string
+          vet_id: string
+        }
+        Insert: {
+          created_at?: string
+          diagnosis?: string | null
+          dosage: string
+          duration?: string | null
+          farmer_id: string
+          id?: string
+          instructions?: string | null
+          medication: string
+          pet_id: string
+          request_id: string
+          vet_id: string
+        }
+        Update: {
+          created_at?: string
+          diagnosis?: string | null
+          dosage?: string
+          duration?: string | null
+          farmer_id?: string
+          id?: string
+          instructions?: string | null
+          medication?: string
+          pet_id?: string
+          request_id?: string
+          vet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -123,6 +180,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      treatment_requests: {
+        Row: {
+          created_at: string
+          farmer_id: string
+          id: string
+          notes: string | null
+          pet_id: string
+          status: Database["public"]["Enums"]["request_status"]
+          symptoms: string
+          updated_at: string
+          urgency: Database["public"]["Enums"]["urgency_level"]
+          vet_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          farmer_id: string
+          id?: string
+          notes?: string | null
+          pet_id: string
+          status?: Database["public"]["Enums"]["request_status"]
+          symptoms: string
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_level"]
+          vet_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          farmer_id?: string
+          id?: string
+          notes?: string | null
+          pet_id?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          symptoms?: string
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_level"]
+          vet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_requests_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -164,6 +268,13 @@ export type Database = {
     }
     Enums: {
       app_role: "farmer" | "vet" | "admin"
+      request_status:
+        | "submitted"
+        | "assigned"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      urgency_level: "low" | "medium" | "high" | "emergency"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -292,6 +403,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["farmer", "vet", "admin"],
+      request_status: [
+        "submitted",
+        "assigned",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      urgency_level: ["low", "medium", "high", "emergency"],
     },
   },
 } as const
