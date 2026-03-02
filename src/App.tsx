@@ -15,6 +15,9 @@ import NewRequest from "./pages/NewRequest";
 import Consultations from "./pages/Consultations";
 import ConsultationDetail from "./pages/ConsultationDetail";
 import Prescriptions from "./pages/Prescriptions";
+import AdminUsers from "./pages/AdminUsers";
+import AdminLogs from "./pages/AdminLogs";
+import AdminStats from "./pages/AdminStats";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,9 +53,9 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/requests" element={<Consultations />} />
         <Route path="/prescriptions" element={<Prescriptions />} />
-        <Route path="/admin/users" element={<Dashboard />} />
-        <Route path="/admin/logs" element={<Dashboard />} />
-        <Route path="/admin/stats" element={<Dashboard />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/logs" element={<AdminLogs />} />
+        <Route path="/admin/stats" element={<AdminStats />} />
         <Route path="/admin/settings" element={<Dashboard />} />
       </Route>
       <Route path="*" element={<NotFound />} />
