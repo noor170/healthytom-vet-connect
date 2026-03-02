@@ -75,7 +75,7 @@ async function tryRefreshToken(): Promise<boolean> {
     });
     if (!res.ok) return false;
     const data: AuthResponse = await res.json();
-    setTokens(data.accessToken, data.refreshToken);
+    setTokens(data.token, data.refreshToken);
     return true;
   } catch {
     return false;
@@ -98,7 +98,7 @@ export interface UserDto {
 }
 
 export interface AuthResponse {
-  accessToken: string;
+  token: string;
   refreshToken: string;
   user: UserDto;
 }

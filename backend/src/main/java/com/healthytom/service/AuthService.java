@@ -121,6 +121,12 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
+        // Initialize refreshTokenVersion if null (for existing users)
+        if (user.getRefreshTokenVersion() == null) {
+            user.setRefreshTokenVersion(0);
+            userRepository.save(user);
+        }
+
         String accessToken = jwtTokenProvider.generateAccessToken(authentication);
         String refreshToken = jwtTokenProvider.generateRefreshToken(email, user.getRefreshTokenVersion());
 

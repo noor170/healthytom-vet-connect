@@ -71,6 +71,7 @@ class AuthServiceTest {
                 .role(User.UserRole.OWNER)
                 .enabled(true)
                 .emailVerified(false)
+                .refreshTokenVersion(0)
                 .build();
     }
 
@@ -83,7 +84,7 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(testUser);
         when(authenticationManager.authenticate(any())).thenReturn(mock(Authentication.class));
         when(jwtTokenProvider.generateAccessToken(any())).thenReturn("accessToken");
-        when(jwtTokenProvider.generateRefreshToken(anyString())).thenReturn("refreshToken");
+        when(jwtTokenProvider.generateRefreshToken(anyString(), anyInt())).thenReturn("refreshToken");
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
 
         // Act
@@ -116,7 +117,7 @@ class AuthServiceTest {
         Authentication authentication = mock(Authentication.class);
         when(authenticationManager.authenticate(any())).thenReturn(authentication);
         when(jwtTokenProvider.generateAccessToken(authentication)).thenReturn("accessToken");
-        when(jwtTokenProvider.generateRefreshToken("test@example.com")).thenReturn("refreshToken");
+        when(jwtTokenProvider.generateRefreshToken("test@example.com", 0)).thenReturn("refreshToken");
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
 
         // Act
@@ -137,11 +138,15 @@ class AuthServiceTest {
                 .refreshToken("refreshToken")
                 .build();
 
+        // Set up testUser with refreshTokenVersion for token validation
+        testUser.setRefreshTokenVersion(1);
+
         when(jwtTokenProvider.validateToken("refreshToken")).thenReturn(true);
         when(jwtTokenProvider.getUsernameFromToken("refreshToken")).thenReturn("test@example.com");
+        when(jwtTokenProvider.getTokenVersionFromToken("refreshToken")).thenReturn(1);
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
         when(jwtTokenProvider.generateAccessTokenFromUsername("test@example.com")).thenReturn("newAccessToken");
-        when(jwtTokenProvider.generateRefreshToken("test@example.com")).thenReturn("newRefreshToken");
+        when(jwtTokenProvider.generateRefreshToken("test@example.com", 2)).thenReturn("newRefreshToken");
 
         // Act
         AuthenticationResponse response = authService.refreshToken(refreshRequest);
