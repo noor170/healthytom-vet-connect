@@ -1,0 +1,275 @@
+### Vet Connect API - HTTP Request Examples
+### Use with VS Code REST Client Extension or Postman
+
+@baseUrl = http://localhost:8080/api
+@token = 
+
+### ============================================
+### AUTHENTICATION ENDPOINTS
+### ============================================
+
+### Register a new owner
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "owner@example.com",
+  "password": "Password@123",
+  "firstName": "John",
+  "lastName": "Doe",
+  "phoneNumber": "+1234567890",
+  "role": "OWNER"
+}
+
+### Register a new veterinarian
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "vet@example.com",
+  "password": "Password@123",
+  "firstName": "Dr.",
+  "lastName": "Smith",
+  "phoneNumber": "+0987654321",
+  "role": "VETERINARIAN",
+  "specialization": "Small Animals",
+  "licenseNumber": "VET123456"
+}
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner@example.com",
+  "password": "Password@123"
+}
+
+### Refresh Token
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ============================================
+### USER ENDPOINTS
+### ============================================
+
+### Get current authenticated user
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+
+### Get user by ID
+GET {{baseUrl}}/users/1
+Authorization: Bearer {{token}}
+
+### ============================================
+### PET ENDPOINTS
+### ============================================
+
+### Create a new pet
+POST {{baseUrl}}/pets?ownerId=1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Buddy",
+  "species": "Dog",
+  "breed": "Golden Retriever",
+  "color": "Golden",
+  "weight": 30.5,
+  "dateOfBirth": "2020-01-15",
+  "microchipNumber": "123456789",
+  "medicalHistory": "Vaccinated, no known allergies",
+  "vaccinations": "DHPP, Rabies"
+}
+
+### Get pet by ID
+GET {{baseUrl}}/pets/1
+Authorization: Bearer {{token}}
+
+### Get all pets for owner
+GET {{baseUrl}}/pets/owner/1
+Authorization: Bearer {{token}}
+
+### Get all pets (Admin/Vet only)
+GET {{baseUrl}}/pets
+Authorization: Bearer {{token}}
+
+### Update pet
+PUT {{baseUrl}}/pets/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Buddy",
+  "species": "Dog",
+  "breed": "Golden Retriever",
+  "color": "Golden",
+  "weight": 31.0,
+  "dateOfBirth": "2020-01-15",
+  "microchipNumber": "123456789",
+  "medicalHistory": "Vaccinated, no known allergies, recent checkup",
+  "vaccinations": "DHPP, Rabies"
+}
+
+### Delete pet
+DELETE {{baseUrl}}/pets/1
+Authorization: Bearer {{token}}
+
+### ============================================
+### CONSULTATION ENDPOINTS
+### ============================================
+
+### Create consultation
+POST {{baseUrl}}/consultations?ownerId=1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "petId": 1,
+  "title": "Regular Checkup",
+  "description": "Annual health checkup",
+  "symptoms": "No symptoms",
+  "status": "PENDING",
+  "consultationDate": "2026-03-10T14:00:00"
+}
+
+### Get consultation by ID
+GET {{baseUrl}}/consultations/1
+Authorization: Bearer {{token}}
+
+### Get consultations for owner
+GET {{baseUrl}}/consultations/owner/1
+Authorization: Bearer {{token}}
+
+### Get consultations for veterinarian
+GET {{baseUrl}}/consultations/veterinarian/2
+Authorization: Bearer {{token}}
+
+### Get consultations for pet
+GET {{baseUrl}}/consultations/pet/1
+Authorization: Bearer {{token}}
+
+### Get all consultations (Admin only)
+GET {{baseUrl}}/consultations
+Authorization: Bearer {{token}}
+
+### Update consultation
+PUT {{baseUrl}}/consultations/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "petId": 1,
+  "title": "Regular Checkup",
+  "description": "Annual health checkup completed",
+  "symptoms": "No symptoms",
+  "diagnosis": "Healthy, no issues found",
+  "notes": "Dog is in excellent health",
+  "status": "COMPLETED",
+  "veterinarianId": 2
+}
+
+### Assign veterinarian to consultation
+PUT {{baseUrl}}/consultations/1/assign-veterinarian/2
+Authorization: Bearer {{token}}
+
+### Rate consultation
+PUT {{baseUrl}}/consultations/1/rate?rating=5&feedback=Excellent service
+Authorization: Bearer {{token}}
+
+### Delete consultation
+DELETE {{baseUrl}}/consultations/1
+Authorization: Bearer {{token}}
+
+### ============================================
+### PRESCRIPTION ENDPOINTS
+### ============================================
+
+### Create prescription
+POST {{baseUrl}}/prescriptions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "consultationId": 1,
+  "petId": 1,
+  "veterinarianId": 2,
+  "medicationName": "Amoxicillin",
+  "dosage": "250 mg",
+  "frequency": "twice daily",
+  "duration": 7,
+  "instructions": "Take with food",
+  "sideEffects": "May cause upset stomach",
+  "status": "ACTIVE",
+  "prescribedDate": "2026-03-05",
+  "startDate": "2026-03-05",
+  "endDate": "2026-03-12"
+}
+
+### Get prescription by ID
+GET {{baseUrl}}/prescriptions/1
+Authorization: Bearer {{token}}
+
+### Get prescriptions for consultation
+GET {{baseUrl}}/prescriptions/consultation/1
+Authorization: Bearer {{token}}
+
+### Get prescriptions for pet
+GET {{baseUrl}}/prescriptions/pet/1
+Authorization: Bearer {{token}}
+
+### Get prescriptions for veterinarian
+GET {{baseUrl}}/prescriptions/veterinarian/2
+Authorization: Bearer {{token}}
+
+### Get all prescriptions (Admin only)
+GET {{baseUrl}}/prescriptions
+Authorization: Bearer {{token}}
+
+### Update prescription
+PUT {{baseUrl}}/prescriptions/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "consultationId": 1,
+  "petId": 1,
+  "veterinarianId": 2,
+  "medicationName": "Amoxicillin",
+  "dosage": "250 mg",
+  "frequency": "twice daily",
+  "duration": 7,
+  "instructions": "Take with food after meals",
+  "sideEffects": "May cause upset stomach",
+  "status": "COMPLETED",
+  "prescribedDate": "2026-03-05",
+  "startDate": "2026-03-05",
+  "endDate": "2026-03-12",
+  "notes": "Patient responded well to treatment"
+}
+
+### Delete prescription
+DELETE {{baseUrl}}/prescriptions/1
+Authorization: Bearer {{token}}
+
+### ============================================
+### USAGE INSTRUCTIONS
+### ============================================
+
+### For VS Code REST Client:
+### 1. Install "REST Client" extension
+### 2. Update @baseUrl with your API endpoint
+### 3. Click "Send Request" above each endpoint
+### 4. Save token from login response and update @token
+
+### For Postman:
+### 1. Create new Collection
+### 2. Create requests from examples above
+### 3. Use {{baseUrl}} and {{token}} as variables
+### 4. Save responses for reuse
+
+### Note: Replace all IDs (1, 2, etc.) with actual IDs from your system
