@@ -15,6 +15,7 @@ import NewRequest from "./pages/NewRequest";
 import Consultations from "./pages/Consultations";
 import ConsultationDetail from "./pages/ConsultationDetail";
 import Prescriptions from "./pages/Prescriptions";
+import Profile from "./pages/Profile";
 import AdminUsers from "./pages/AdminUsers";
 import AdminLogs from "./pages/AdminLogs";
 import AdminStats from "./pages/AdminStats";
@@ -49,7 +50,7 @@ function AppRoutes() {
         <Route path="/requests/new" element={<NewRequest />} />
         <Route path="/consultations" element={<Consultations />} />
         <Route path="/consultations/:id" element={<ConsultationDetail />} />
-        <Route path="/profile" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/requests" element={<Consultations />} />
         <Route path="/prescriptions" element={<Prescriptions />} />
