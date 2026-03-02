@@ -40,14 +40,26 @@ export default function NewRequest() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase.from("treatment_requests").insert({
+      const { data, error } = await supabase.from("treatment_requests").insert({
         pet_id: petId,
         farmer_id: user.id,
         urgency: urgency as any,
         symptoms,
         notes: notes || null,
-      });
+      }).select("id").single();
       if (error) throw error;
+
+      // Trigger push notifications to vets (fire and forget)
+      const selectedPet = pets?.find((p) => p.id === petId);
+      const petLabel = selectedPet ? `${selectedPet.name} (${selectedPet.species})` : "a pet";
+      supabase.functions.invoke("push-notify", {
+        body: {
+          action: "notify-vets",
+          title: `🐾 New ${urgency} request`,
+          message: `Treatment needed for ${petLabel}: ${symptoms.slice(0, 100)}`,
+          url: `/consultations/${data.id}`,
+        },
+      }).catch(console.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["treatment-requests"] });
