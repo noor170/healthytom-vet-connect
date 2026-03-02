@@ -66,6 +66,12 @@ public class Consultation {
     @Column(columnDefinition = "TEXT")
     private String feedback;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

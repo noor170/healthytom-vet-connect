@@ -2,6 +2,9 @@ package com.healthytom.service;
 
 import com.healthytom.dto.*;
 import com.healthytom.entity.User;
+import com.healthytom.exception.EmailAlreadyExistsException;
+import com.healthytom.exception.InvalidTokenException;
+import com.healthytom.exception.UserNotFoundException;
 import com.healthytom.repository.UserRepository;
 import com.healthytom.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +29,18 @@ public class AuthService {
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already in use");
+            throw new EmailAlreadyExistsException("Email already in use");
+        }
+
+        // Validate role - only allow OWNER and VETERINARIAN (ADMIN is internal)
+        User.UserRole role;
+        try {
+            role = User.UserRole.valueOf(request.getRole().toUpperCase());
+            if (role == User.UserRole.ADMIN) {
+                throw new IllegalArgumentException("Cannot register with ADMIN role");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid role. Allowed values: OWNER, VETERINARIAN");
         }
 
         User user = User.builder()
@@ -35,7 +49,7 @@ public class AuthService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .phoneNumber(request.getPhoneNumber())
-                .role(User.UserRole.valueOf(request.getRole().toUpperCase()))
+                .role(role)
                 .specialization(request.getSpecialization())
                 .licenseNumber(request.getLicenseNumber())
                 .enabled(true)
@@ -61,18 +75,36 @@ public class AuthService {
         return authenticateAndGenerateTokens(request.getEmail(), request.getPassword());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthenticationResponse refreshToken(RefreshTokenRequest request) {
         if (!jwtTokenProvider.validateToken(request.getRefreshToken())) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new InvalidTokenException("Invalid refresh token");
         }
 
         String email = jwtTokenProvider.getUsernameFromToken(request.getRefreshToken());
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        // Validate token version for rotation security
+        Integer tokenVersion = jwtTokenProvider.getTokenVersionFromToken(request.getRefreshToken());
+        Integer userTokenVersion = user.getRefreshTokenVersion();
+        
+        // Handle null refreshTokenVersion for existing users (defaults to 0)
+        if (userTokenVersion == null) {
+            userTokenVersion = 0;
+            user.setRefreshTokenVersion(0);
+        }
+        
+        if (tokenVersion == null || !tokenVersion.equals(userTokenVersion)) {
+            throw new InvalidTokenException("Invalid or expired refresh token");
+        }
+
+        // Increment token version to invalidate old refresh token (token rotation)
+        user.setRefreshTokenVersion(user.getRefreshTokenVersion() + 1);
+        userRepository.save(user);
 
         String accessToken = jwtTokenProvider.generateAccessTokenFromUsername(email);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(email);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(email, user.getRefreshTokenVersion());
 
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)
@@ -86,11 +118,11 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(email, password)
         );
 
-        String accessToken = jwtTokenProvider.generateAccessToken(authentication);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(email);
-
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        String accessToken = jwtTokenProvider.generateAccessToken(authentication);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(email, user.getRefreshTokenVersion());
 
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)

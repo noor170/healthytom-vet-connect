@@ -52,6 +52,9 @@ public class User {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     @Column
+    private Integer refreshTokenVersion = 0;
+
+    @Column
     private String specialization; // For veterinarians
 
     @Column
@@ -61,6 +64,12 @@ public class User {
         OWNER,
         VETERINARIAN,
         ADMIN
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
