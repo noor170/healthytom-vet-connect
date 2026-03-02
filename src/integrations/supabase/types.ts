@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pet_photos: {
         Row: {
           created_at: string
@@ -264,6 +294,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          _action: string
+          _details?: Json
+          _entity_id?: string
+          _entity_type?: string
+          _user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
