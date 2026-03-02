@@ -1,26 +1,48 @@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { prescriptionApi, petApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pill } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Prescriptions() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const navigate = useNavigate();
 
   const { data: prescriptions, isLoading } = useQuery({
     queryKey: ["all-prescriptions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("prescriptions")
-        .select("*, pets(name, species)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      if (!user) return [];
+      let rxList;
+      if (role === "vet") {
+        rxList = await prescriptionApi.getByVet(user.id);
+      } else {
+        rxList = await prescriptionApi.getAll().catch(() => []);
+      }
+
+      // Enrich with pet names
+      const petIds = [...new Set(rxList.map((r) => r.petId))] as number[];
+      const petMap = new Map<number, { name: string; species: string }>();
+      await Promise.all(
+        petIds.map(async (pid) => {
+          try {
+            const pet = await petApi.getById(pid);
+            petMap.set(pid, { name: pet.name, species: pet.species });
+          } catch {
+            /* ignore */
+          }
+        }),
+      );
+
+      return rxList.map((rx) => ({
+        ...rx,
+        petName: petMap.get(rx.petId)?.name || "Unknown",
+        petSpecies: petMap.get(rx.petId)?.species || "",
+      }));
     },
+    enabled: !!user,
   });
 
   if (isLoading) {
@@ -54,27 +76,29 @@ export default function Prescriptions() {
             <Card
               key={rx.id}
               className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate(`/consultations/${rx.request_id}`)}
+              onClick={() => navigate(`/consultations/${rx.consultationId}`)}
             >
               <CardContent className="py-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Pill className="h-4 w-4 text-primary" />
-                    <span className="font-semibold">{rx.medication}</span>
+                    <span className="font-semibold">{rx.medicationName}</span>
                     <Badge variant="outline" className="text-xs">
-                      {(rx as any).pets?.name} — {(rx as any).pets?.species}
+                      {rx.petName} — {rx.petSpecies}
                     </Badge>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {format(new Date(rx.created_at), "MMM d, yyyy")}
-                  </span>
+                  {rx.prescribedDate && (
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(rx.prescribedDate), "MMM d, yyyy")}
+                    </span>
+                  )}
                 </div>
                 <div className="flex gap-4 text-sm text-muted-foreground">
                   <span>Dosage: {rx.dosage}</span>
-                  {rx.duration && <span>Duration: {rx.duration}</span>}
+                  {rx.duration && <span>Duration: {rx.duration} days</span>}
                 </div>
-                {rx.diagnosis && (
-                  <p className="text-sm mt-1">Diagnosis: {rx.diagnosis}</p>
+                {rx.notes && (
+                  <p className="text-sm mt-1">Diagnosis: {rx.notes}</p>
                 )}
               </CardContent>
             </Card>
