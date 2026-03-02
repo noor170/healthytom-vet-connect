@@ -76,10 +76,10 @@ public class JwtTokenProvider {
     public boolean validateToken(String authToken) {
         try {
             SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
-            Jwts.parserBuilder()
-                    .setSigningKey(key)
+            Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(authToken);
+                    .parseSignedClaims(authToken);
             return true;
         } catch (io.jsonwebtoken.security.SecurityException e) {
             log.error("Invalid JWT signature: {}", e.getMessage());
