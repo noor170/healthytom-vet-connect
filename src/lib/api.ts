@@ -3,7 +3,7 @@
  * All data flows through this module instead of Supabase.
  */
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "http://localhost:8081";
 
 // ── Token helpers ──────────────────────────────────────────────
 

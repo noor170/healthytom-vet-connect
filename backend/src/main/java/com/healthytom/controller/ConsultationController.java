@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/consultations")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Slf4j
 @RequiredArgsConstructor
 public class ConsultationController {
